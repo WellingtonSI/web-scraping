@@ -12,6 +12,7 @@ use Symfony\Component\CssSelector\CssSelectorConverter;
 use Illuminate\Support\Facades\Http;
 
 
+
 class WebScrapingController extends Controller
 {
 
@@ -27,7 +28,6 @@ class WebScrapingController extends Controller
 
         $link = $crawler->filter('#app-layer-base > div > main > div > div > div > div > div.uitk-layout-flex-item.uitk-layout-flex-item-flex-grow-1 > section:nth-child(2) > div > div.uitk-spacing.search-results-listing.uitk-spacing-padding-small-block-three.uitk-spacing-padding-medium-blockstart-one.uitk-spacing-padding-large-blockstart-three > div > div:nth-child(2) > div:nth-child(3) > div:nth-child(2) > div:nth-child(2) > div > a')->attr('href');
 
-
         $result = $client->get("https://www.hoteis.com" . $link);
 
         $html = $result->getBody()->getContents();
@@ -40,7 +40,5 @@ class WebScrapingController extends Controller
         });
 
         dump($crawler->filter('#Offers > div:nth-child(3) > div > div.uitk-layout-grid-item > div > div:nth-child(2) > div:nth-child(2) > div > h3')->text());
-
-        //dump('oi');
     }
 }
