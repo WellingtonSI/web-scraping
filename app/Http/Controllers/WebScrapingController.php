@@ -21,13 +21,11 @@ class WebScrapingController extends Controller
 
         $query = [
             "operationName" => "PropertyOffersQuery",
-            "query" => 'query PropertyOffersQuery($context: ContextInput!, $propertyId: String!, $searchCriteria: PropertySearchCriteriaInput, $shoppingContext: ShoppingContextInput, $travelAdTrackingInfo: PropertyTravelAdTrackingInfoInput, $searchOffer: SearchOfferInput, $referrer: String) {
+            "query" => 'query PropertyOffersQuery($context: ContextInput!, $propertyId: String!, $searchCriteria: PropertySearchCriteriaInput, $shoppingContext: ShoppingContextInput, $travelAdTrackingInfo: PropertyTravelAdTrackingInfoInput) {
                 propertyOffers(
                   context: $context
                   propertyId: $propertyId
-                  referrer: $referrer
                   searchCriteria: $searchCriteria
-                  searchOffer: $searchOffer
                   shoppingContext: $shoppingContext
                   travelAdTrackingInfo: $travelAdTrackingInfo
                 ) {
@@ -36,8 +34,7 @@ class WebScrapingController extends Controller
                         ...PropertyUnitCategorizationFragment
                     }
                 }
-              }
-
+            }
 
               fragment PropertyUnitCategorizationFragment on LodgingCategorizedUnit {
                 header {
@@ -107,8 +104,7 @@ class WebScrapingController extends Controller
                             "coordinates"=> [
                                 "latitude"=> -14.816838,
                                 "longitude"=> -39.025248
-                            ],
-                            "pinnedPropertyId"=> "3957818",
+                            ]
                         ],
                         "rooms"=> [
                             [
@@ -118,21 +114,9 @@ class WebScrapingController extends Controller
                         ]
                     ]
                 ],
-                "searchOffer"=> [
-                    "offerPrice"=> [
-                        "offerTimestamp" => "1685017471604",
-                        "price"=> [
-                            "amount"=> 250,
-                            "currency"=> "BRL"
-                        ]
-                    ],
-                ],
-                "referrer"=> "HSR",
                 "context"=> [
                     "siteId"=> 301800003,
                     "locale"=> "pt_BR",
-                    "eapid"=> 3,
-                    "currency"=> "BRL",
                     "device"=> [
                         "type"=> "DESKTOP"
                     ],
@@ -140,7 +124,6 @@ class WebScrapingController extends Controller
                         "duaid"=> "b895f215-3bf5-4fbc-971f-dc46a6e3cc6b",
                     ]
                 ]
-                
             ] 
         ];
 
