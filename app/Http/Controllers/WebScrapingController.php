@@ -193,8 +193,8 @@ class WebScrapingController extends Controller
         $data->put('data', []);
 
         foreach($result['data']['propertyOffers']['categorizedListings'] as $quarto){
-           $pensao = null;
-           $ocupacao = null;
+           $pensao = [];
+           $ocupacao = [];
 
             $ids = array_column(array_column($quarto['features'],'graphic'),'id');
 
@@ -212,16 +212,14 @@ class WebScrapingController extends Controller
             }), 'text' );
             
 
-            $ocupacao = array_filter($quarto['primarySelections'][0]['propertyUnit']['detailsDialog']['content']['details']['contents'], function ($item) {
+            $ocupacao = array_values( array_filter($quarto['primarySelections'][0]['propertyUnit']['detailsDialog']['content']['details']['contents'], function ($item) {
                 return $item['heading'] === 'Acomoda';
-            } );
+            } ) );
 
-   
+            if(!empty($ocupacao))
+                $ocupacao = $ocupacao[0]['items'][0]['text'];
 
-            dump(array_column($ocupacao,'text'));
-            
-            //dump($quarto['primarySelections'][0]['propertyUnit']['detailsDialog']['content']['details']['contents']);
-            break;
+            dump($ocupacao);
             
         
         //    $quarto = [
