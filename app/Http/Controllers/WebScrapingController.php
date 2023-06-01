@@ -1,16 +1,8 @@
 <?php
 
 namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-use GuzzleHttp\Client;
-use Weidner\Goutte\GoutteFacade;
-use Symfony\Component\HttpClient\HttpClient;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
-use Symfony\Component\DomCrawler\Crawler;
-use Symfony\Component\CssSelector\CssSelectorConverter;
-use Illuminate\Support\Facades\Http;
-
+use Illuminate\Support\Collection;
+use Illuminate\Support\Arr;
 
 
 class WebScrapingController extends Controller
@@ -18,7 +10,7 @@ class WebScrapingController extends Controller
 
     public function webScraping()
     {
-
+        
         $query = [
             "operationName" => "PropertyOffersQuery",
             "query" => 'query PropertyOffersQuery($context: ContextInput!, $propertyId: String!, $searchCriteria: PropertySearchCriteriaInput, $shoppingContext: ShoppingContextInput, $travelAdTrackingInfo: PropertyTravelAdTrackingInfoInput) {
@@ -37,52 +29,89 @@ class WebScrapingController extends Controller
             }
 
               fragment PropertyUnitCategorizationFragment on LodgingCategorizedUnit {
+
                 header {
                     text
                 }
+
                 features {
                     text
-                }
-                primarySelections {
-                    propertyUnit {
-                        ratePlans {
+                    graphic {
+                        ... on Icon {
                             id
-                            amenities {
-                                description
-                            }
-                            paymentPolicy {
-                              price {
-                                displayMessages {
-                                    lineItems {
-                                      ...PriceMessageFragment
-                                      ...EnrichedMessageFragment
-                                    }
-                                }
-                              }
-                            }
-                            priceDetails{
-                              lodgingPrepareCheckout{
-                                action{
-                                  totalPrice{
-                                    amount
-                                  }
-                                }
-                              }
-                            }
                         }
                     }
                 }
-              }
-              
-              fragment PriceMessageFragment on DisplayPrice {
-                price {
-                  formatted
+
+                primarySelections {
+
+                    propertyUnit {
+
+                        detailsDialog {
+                            ...UnitPropertyOffersDetailsDialogFragment
+                        }
+
+                        ratePlans {
+
+                            badge {
+                                text
+                            }
+
+                            priceDetails{
+                              price {
+
+                                options {
+                                    strikeOut {
+                                        formatted
+                                    }
+                                }
+                                
+                              }
+
+                              priceBreakDownSummary {
+
+                                sections {
+
+                                    items {
+
+                                        value {
+
+                                            primaryMessage {
+                                                value
+                                            }
+                                           
+                                        }
+                                    }
+
+                                }
+
+                              }
+
+                            }
+                        }
+
+                    }
+
                 }
+
               }
-              
-              fragment EnrichedMessageFragment on LodgingEnrichedMessage {
-                value
-              }
+              fragment UnitPropertyOffersDetailsDialogFragment on PropertyUnitDetailsDialog {
+                content {
+                    details {
+                            contents {
+                                heading 
+                                items {
+                                    text
+  
+                                }
+
+                            }
+       
+                    }
+
+                }
+
+            }
               ',
             "variables" => [
                 "propertyId"=> "3957818",
@@ -109,7 +138,7 @@ class WebScrapingController extends Controller
                         "rooms"=> [
                             [
                                 "adults"=> 2,
-                                "children"=> []
+                                "children"=> [ "age" => 8]
                             ]
                         ]
                     ]
@@ -152,12 +181,47 @@ class WebScrapingController extends Controller
         $headers[] = 'X-Page-Id: page.Hotels.Infosite.Information,H,30';
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
-        $result = curl_exec($ch);
+        $result = json_decode(curl_exec($ch),true);
         if (curl_errno($ch)) {
             echo 'Error:' . curl_error($ch);
         }
         curl_close($ch);
 
-        dump($result);
+        //dump($result);
+
+        $data = new Collection();
+        $data->put('data', []);
+
+        foreach($result['data']['propertyOffers']['categorizedListings'] as $room){
+           $pensao = null;
+
+            $ids = array_column(array_column($room['features'],'graphic'),'id');
+
+            if (in_array('free_breakfast', $ids)) {
+                $position = array_search('free_breakfast', $ids);
+                $pensao = $room['features'][$position]['text'];
+
+                unset($room['features'][$position]);
+                $room['features'] = array_values($room['features']);
+                
+            }
+
+            //$positions =  array_keys($ids,["done",""]);
+            dump(array_column($room['features'],'graphic'));
+
+
+            
+        
+        //    $quarto = [
+        //     "nome" => $room['header']['text'],
+        //     "pensao" => $room['features'][2]['text'],
+        //     "informacoesQuarto"
+        //    ];
+
+            
+        }
+
+
+        
     }
 }
