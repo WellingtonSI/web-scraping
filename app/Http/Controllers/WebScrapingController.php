@@ -192,24 +192,36 @@ class WebScrapingController extends Controller
         $data = new Collection();
         $data->put('data', []);
 
-        foreach($result['data']['propertyOffers']['categorizedListings'] as $room){
+        foreach($result['data']['propertyOffers']['categorizedListings'] as $quarto){
            $pensao = null;
+           $ocupacao = null;
 
-            $ids = array_column(array_column($room['features'],'graphic'),'id');
+            $ids = array_column(array_column($quarto['features'],'graphic'),'id');
 
             if (in_array('free_breakfast', $ids)) {
-                $position = array_search('free_breakfast', $ids);
-                $pensao = $room['features'][$position]['text'];
+                $posicao = array_search('free_breakfast', $ids);
+                $pensao = $quarto['features'][$posicao]['text'];
 
-                unset($room['features'][$position]);
-                $room['features'] = array_values($room['features']);
+                unset($quarto['features'][$posicao]);
+                $quarto['features'] = array_values($quarto['features']);
                 
             }
 
-            //$positions =  array_keys($ids,["done",""]);
-            dump(array_column($room['features'],'graphic'));
+            $informacoesQuarto = array_column ( array_filter($quarto['features'], function ($item) {
+                return !empty($item['graphic']) && (!isset($item['graphic']['id']) || $item['graphic']['id'] !== 'done');
+            }), 'text' );
+            
 
+            $ocupacao = array_filter($quarto['primarySelections'][0]['propertyUnit']['detailsDialog']['content']['details']['contents'], function ($item) {
+                return $item['heading'] === 'Acomoda';
+            } );
 
+   
+
+            dump(array_column($ocupacao,'text'));
+            
+            //dump($quarto['primarySelections'][0]['propertyUnit']['detailsDialog']['content']['details']['contents']);
+            break;
             
         
         //    $quarto = [
