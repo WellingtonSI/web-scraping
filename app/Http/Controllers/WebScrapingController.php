@@ -12,7 +12,6 @@ class WebScrapingController extends Controller
 
     public function webScraping()
     {
-
         try{
             
             $query = [
@@ -160,7 +159,6 @@ class WebScrapingController extends Controller
                 ] 
             ];
     
-    
             $ch = curl_init();
     
             curl_setopt($ch, CURLOPT_URL, 'https://www.hoteis.com/graphql');
@@ -183,9 +181,11 @@ class WebScrapingController extends Controller
             $headers[] = 'Sec-Gpc: 1';
             $headers[] = 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36';
             $headers[] = 'X-Page-Id: page.Hotels.Infosite.Information,H,30';
+
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     
             $result = json_decode(curl_exec($ch),true);
+
             if (curl_errno($ch)) {
                 echo 'Error:' . curl_error($ch);
             }
@@ -217,8 +217,7 @@ class WebScrapingController extends Controller
                 $informacoesQuarto = array_column ( array_filter($quarto['features'], function ($item) {
                     return !empty($item['graphic']) && (!isset($item['graphic']['id']) || $item['graphic']['id'] !== 'done');
                 }), 'text' );
-                
-    
+                 
                 $ocupacao = array_values( array_filter($quarto['primarySelections'][0]['propertyUnit']['detailsDialog']['content']['details']['contents'], function ($item) {
                     return $item['heading'] === 'Acomoda';
                 } ) );
@@ -267,10 +266,6 @@ class WebScrapingController extends Controller
 
             return response()->json( ["error" => "Ocorreu um erro. " . $error] , 500);
         }
-        
-        
 
-
-        
     }
 }
