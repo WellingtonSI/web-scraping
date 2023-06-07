@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 
 
 class WebScrapingController extends Controller
@@ -59,6 +60,22 @@ class WebScrapingController extends Controller
                                 badge {
                                     text
                                 }
+
+                                paymentPolicy {
+                                    
+                                    price {
+
+                                        displayMessages {
+
+                                            lineItems {
+                                                ...PriceMessageFragment
+                                                ...EnrichedMessageFragment
+                                            }
+
+                                        }
+
+                                    }
+                                }
     
                                 priceDetails{
                                   price {
@@ -74,6 +91,8 @@ class WebScrapingController extends Controller
                                   priceBreakDownSummary {
     
                                     sections {
+
+
     
                                         items {
     
@@ -115,33 +134,41 @@ class WebScrapingController extends Controller
                     }
     
                 }
-                  ',
+                fragment PriceMessageFragment on DisplayPrice {
+                    price {
+                      formatted
+                    }
+                }
+                  
+                fragment EnrichedMessageFragment on LodgingEnrichedMessage {
+                    value
+                }',
                 "variables" => [
-                    "propertyId"=> "3957818",
+                    "propertyId"=> "11601353",
                     "searchCriteria"=> [
                         "primary"=> [
                             "dateRange"=> [
                                 "checkInDate"=> [
-                                    "day"=> 12,
+                                    "day"=> 21,
                                     "month"=> 6,
                                     "year"=> 2023
                                 ],
                                 "checkOutDate"=> [
-                                    "day"=> 13,
+                                    "day"=> 22,
                                     "month"=> 6,
                                     "year"=> 2023
                                 ]
                             ],
                             "destination"=> [
                                 "coordinates"=> [
-                                    "latitude"=> -14.816838,
-                                    "longitude"=> -39.025248
+                                    "latitude"=> -26.305649,
+                                    "longitude"=> -48.84436
                                 ]
                             ],
                             "rooms"=> [
                                 [
                                     "adults"=> 2,
-                                    "children"=> [ "age" => 8]
+                                    "children"=> []
                                 ]
                             ]
                         ]
@@ -153,7 +180,7 @@ class WebScrapingController extends Controller
                             "type"=> "DESKTOP"
                         ],
                         "identity"=> [
-                            "duaid"=> "b895f215-3bf5-4fbc-971f-dc46a6e3cc6b",
+                            "duaid"=> Str::uuid(),
                         ]
                     ]
                 ] 
@@ -186,6 +213,8 @@ class WebScrapingController extends Controller
     
             $result = json_decode(curl_exec($ch),true);
 
+            //dd($result);
+
             if (curl_errno($ch)) {
                 echo 'Error:' . curl_error($ch);
             }
@@ -201,7 +230,7 @@ class WebScrapingController extends Controller
                $valorAnterior = [];
                $valorSemImpostos = [];
                $valorComImpostos = [];
-               $impostos = [];
+               $impostosTaxas = [];
     
                 $ids = array_column(array_column($quarto['features'],'graphic'),'id');
     
@@ -234,12 +263,19 @@ class WebScrapingController extends Controller
                                         [] :
                                         $quarto['primarySelections'][0]['propertyUnit']['ratePlans'][0]['priceDetails'][0]['price']['options'][0]['strikeOut']['formatted'];
                     
-                    
-                    $valorSemImpostos =  $quarto['primarySelections'][0]['propertyUnit']['ratePlans'][0]['priceDetails'][0]['priceBreakDownSummary']['sections'][0]['items'][0]['value']['primaryMessage']['value'];
+                    $posicao = $quarto['primarySelections'][0]['propertyUnit']['ratePlans'][0]['paymentPolicy'][0]['price']['displayMessages'] == null ? 1 : 0;
+
+                    $valorSemImpostos =  $quarto['primarySelections'][0]['propertyUnit']['ratePlans'][0]['paymentPolicy'][$posicao]['price']['displayMessages'][0]['lineItems'][0]['price']['formatted'];
     
-                    $valorComImpostos =  $quarto['primarySelections'][0]['propertyUnit']['ratePlans'][0]['priceDetails'][0]['priceBreakDownSummary']['sections'][0]['items'][2]['value']['primaryMessage']['value'];
+                    $valorComImpostos =   explode(": ",$quarto['primarySelections'][0]['propertyUnit']['ratePlans'][0]['paymentPolicy'][$posicao]['price']['displayMessages'][1]['lineItems'][0]['value'])[1];
+
+
+                    if(!empty($valorComImpostos) && !empty($valorSemImpostos)){
     
-                    $impostos = $quarto['primarySelections'][0]['propertyUnit']['ratePlans'][0]['priceDetails'][0]['priceBreakDownSummary']['sections'][0]['items'][1]['value']['primaryMessage']['value'];
+                        $impostosTaxas = "R$ " . (string)((int)  str_replace('.', '',(preg_split('/\s+/u', $valorComImpostos))[1]) - (int)  str_replace('.', '',(preg_split('/\s+/u', $valorSemImpostos))[1]));
+
+                    }
+
     
                 }
                 
@@ -251,9 +287,9 @@ class WebScrapingController extends Controller
                     "valores" => [
                         "desconto" => $desconto,
                         "valorAnterior" => $valorAnterior,
-                        "valorSemImpostos" => $valorSemImpostos,
-                        "valorComImpostos" => $valorComImpostos,
-                        "impostos" => $impostos,
+                        "valorSemImpostosTaxas" => $valorSemImpostos,
+                        "valorComImpostosTaxas" => $valorComImpostos,
+                        "impostosTaxas" => $impostosTaxas,
                     ]
                ];
     
