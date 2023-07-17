@@ -13,7 +13,7 @@ class ScrapingDaninnController extends Controller
 
         $ch = curl_init();
 
-        curl_setopt($ch, CURLOPT_URL, 'https://nacionalinn.letsbook.com.br/D/Reserva/ConsultaDisponibilidade?checkin=21%2F08%2F2023&checkout=22%2F08%2F2023&hotel=72&adultos=2&criancas=2,3');
+        curl_setopt($ch, CURLOPT_URL, 'https://nacionalinn.letsbook.com.br/D/Reserva/ConsultaDisponibilidade?checkin=30%2F08%2F2023&checkout=31%2F08%2F2023&hotel=45&adultos=2&criancas=4,4');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
 
@@ -23,7 +23,7 @@ class ScrapingDaninnController extends Controller
         $headers[] = 'Authority: nacionalinn.letsbook.com.br';
         $headers[] = 'Accept: */*';
         $headers[] = 'Accept-Language: pt-BR,pt;q=0.6';
-        $headers[] = 'Cookie: NACIONALINN-PMW-SEARCHES=[{"Chegada":"2023-08-21T00:00:00","Partida":"2023-08-22T00:00:00","CodigoHotel":"72","Adultos":"2","Criancas":"2,3"}]';
+        $headers[] = 'Cookie: NACIONALINN-PMW-SEARCHES=[{"Chegada":"2023-08-30T00:00:00","Partida":"2023-08-31T00:00:00","CodigoHotel":"45","Adultos":"2","Criancas":"4,4"}]';
         $headers[] = 'Sec-Fetch-Mode: cors';
         $headers[] = 'Sec-Gpc: 1';
         $headers[] = 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36';
@@ -45,9 +45,10 @@ class ScrapingDaninnController extends Controller
             dump("Máx. Crianças = ".$node->filter('div.criancas')->attr('data-n'));
             $node->filter('table#tblCondicoes > tbody > tr')->each(function (Crawler $node2, $id){
                 dump($node2->filter('li.nomeTarifa')->text());
-                //dump(is_null($node2->filter('span.valorSemDesconto')->text()) ? :$node2->filter('span.valorSemDesconto')->text());
-                //dump($node2->filter('span.precentualDesconto')->text());
+                dump($node2->filter('span.valorSemDesconto')->count() ? $node2->filter('span.valorSemDesconto')->text() : "");
+                dump($node2->filter('span.precentualDesconto')->count() ? $node2->filter('span.precentualDesconto')->text() : "");
                 dump($node2->filter('span.valorFinal')->text());
+                dump($node2->filter('span.mais-taxas')->count()  ? $node2->filter('span.mais-taxas')->text() : "");
             });
             dump('---------------------------------');
         });
