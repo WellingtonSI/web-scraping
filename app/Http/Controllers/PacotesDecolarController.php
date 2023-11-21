@@ -8,7 +8,8 @@ use Symfony\Component\DomCrawler\Crawler;
 
 class PacotesDecolarController extends Controller
 {
-    public function pacotesDecolar(){
+    public function pacotesDecolar(): array
+    {
          
         $origin = 'CIT_6574';
         $destiny = 'CIT_4430';
@@ -171,13 +172,15 @@ class PacotesDecolarController extends Controller
         dump($references);        
 
         //dd($response);
+        $data_rooms = [];
         foreach($result['data']['room_groups'] as $room){
 
+            $data_room = [];
             if(isset($room['room_types'][0]['id'])){
                  // Verifica se o código existe na estrutura e obtém o nome associado
                  if (isset($references['room_types'][$room['room_types'][0]['id']]['name'])) {
                 
-                    $name_room = $references['room_types'][$room['room_types'][0]['id']]['name'];
+                    $room_name = $references['room_types'][$room['room_types'][0]['id']]['name'];
                    
                     //dd($response);
                 } else {
@@ -187,8 +190,7 @@ class PacotesDecolarController extends Controller
             }else{
                 echo "Código não encontrado na estrutura room_types.";
             }
-
-            $data_rooms = [];
+            
             $changes_cancellations = null;
             foreach($room['room_packs'] as $room_info){
 
@@ -200,7 +202,7 @@ class PacotesDecolarController extends Controller
 
                     }
                 }else{
-
+                    echo "não foi";
                 }
 
                 
@@ -217,24 +219,110 @@ class PacotesDecolarController extends Controller
 
                     }
                 }else{
+                    echo "não foi";
+                }
+
+                $hasDiscount=false;
+                $amount=null;
+                $tax_amount=null;
+                $amount_with_discount=null;
+                $discount_percentage=null;
+                $discount = null;
+
+                //valores do quarto
+                if(!isset($room_info['prices'])){
+                    return "Key prices não retornada.";
+                }
+                if(!is_array($room_info['prices'])){
+                    return "Key prices não é um array.";
+                }
+                if(!isset($room_info['prices']['typed_breakdown'])){
+                    return "Key typed_breakdown não retornada.";
+                }
+                if(!isset($room_info['prices']['typed_breakdown']['model'])){
+                    return "Key prices[typed_breakdown]['model'] não retornada.";
+                }
+                if(!isset($room_info['prices']['typed_breakdown']['model']['body'])){
+                    return "Key prices[typed_breakdown]['model']['body'] não retornada.";
+                }
+                if(!isset($room_info['prices']['typed_breakdown']['model']['footer'])){
+                    return "Key prices[typed_breakdown]['model']['footer'] não retornada.";
+                }
+
+                $position = array_search('TAXES', array_column($room_info['prices']['typed_breakdown']['model']['body'], 'type'));
+
+                if($position  === false){
+                    return "Key prices[typed_breakdown]['model']['body']['type'] == TAXES não retornada.";
+                }
+
+                $position_prices = array_search('BRL', array_column($room_info['prices']['typed_breakdown']['model']['body'][$position]['prices'], 'currency'));
+
+                if($position_prices === false){
+                    return "Key prices[typed_breakdown]['model']['body']['prices']['currency'] == BRL não retornada.";
+                }
+
+                $tax_amount = $room_info['prices']['typed_breakdown']['model']['body'][$position]['prices'][$position_prices]['value'];
+
+                $position = array_search('DISCOUNT', array_column($room_info['prices']['typed_breakdown']['model']['body'], 'type'));
+
+                if($position){
+                    $hasDiscount=true;
+
+                    $position_prices = array_search('BRL', array_column($room_info['prices']['typed_breakdown']['model']['body'][$position]['prices'], 'currency'));
+
+                    $discount =  $room_info['prices']['typed_breakdown']['model']['body'][$position]['prices'][$position_prices]['value'];
+
+
+                    $position = array_search('FINAL_PRICE', array_column($room_info['prices']['typed_breakdown']['model']['footer'], 'type'));
+
+
+                    if($position_prices === false){
+                        return "Key prices[typed_breakdown]['model']['footer']['prices']['currency'] == BRL não retornada.";
+                    }
+
+                    $position_prices = array_search('BRL', array_column($room_info['prices']['typed_breakdown']['model']['footer'][$position]['prices'], 'currency'));
+
+                    $amount_with_discount = $room_info['prices']['typed_breakdown']['model']['footer'][$position]['prices'][$position_prices]['value'];
+
+                    $amount = $amount_with_discount + $discount;
+
+                    $discount_percentage = (int) number_format( ($discount/$amount)*100 , 2);
+
+                }else{
+
+                    $position = array_search('FINAL_PRICE', array_column($room_info['prices']['typed_breakdown']['model']['footer'], 'type'));
+
+                    if($position_prices === false){
+                        return "Key prices[typed_breakdown]['model']['footer']['prices']['currency'] == BRL não retornada.";
+                    }
+
+                    $position_prices = array_search('BRL', array_column($room_info['prices']['typed_breakdown']['model']['footer'][$position]['prices'], 'currency'));
+
+                    $amount = $room_info['prices']['typed_breakdown']['model']['footer'][$position]['prices'][$position_prices]['value'];
 
                 }
 
-                
-                if(is_array($room_info['prices']))
-
-   
+                array_push($data_room,[
+                    'meal_info' => $meal_info,
+                    'changes_cancellations' => $changes_cancellations,
+                    'hasDiscount' => $hasDiscount,
+                    'amount' => $amount,
+                    'tax_amount' => $tax_amount,
+                    'amount_with_discount' => $amount_with_discount,
+                    'discount_percentage' =>$discount_percentage,
+                ]);
             }
-         
+            array_push($data_rooms,[
+                "room_name" => $room_name, 
+                "infos" => $data_room
+            ]);
         }
 
-        // array_push($response,[
-        //     "name_hotel" => $name_hotel, 
-        //     "info_rooms" => [
-                
-        //     ]
-        // ]);
-        //dd($result['data']['room_groups']);
+        array_push($response,[
+            "name_hotel" => $name_hotel, 
+            "info_rooms" => $data_rooms
+        ]);
+        dd($response);
 
         
         // $name = 'Rio de janeiro';
