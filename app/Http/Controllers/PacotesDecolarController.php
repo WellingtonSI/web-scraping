@@ -43,6 +43,7 @@ class PacotesDecolarController extends Controller
         $abvc = '';
         $trip_item ='';
         $search_params ='';
+        $flow = '';
         $data_hotels = [];
         // função preg_match para encontrar a correspondência
         if (preg_match('/"search-id", "(.*?)"\);/', $script, $matches)) {
@@ -50,7 +51,7 @@ class PacotesDecolarController extends Controller
             $search_id = $matches[1];
            
         } else {
-            dd("Nenhum URL solicitado encontrado.");
+            dd("Nenhum search_id solicitado encontrado.");
           
         }
         if (preg_match('/requestUrl = "(.*?)";/', $script, $matches)) {
@@ -58,7 +59,7 @@ class PacotesDecolarController extends Controller
             $url = $matches[1];
            
         } else {
-            dd("Nenhum search-id solicitado encontrado.");
+            dd("Nenhum requestUrl solicitado encontrado.");
           
         }
         if (preg_match('/"x-hash", "(.*?)"\);/', $script, $matches)) {
@@ -75,7 +76,7 @@ class PacotesDecolarController extends Controller
             $page_view_id = $matches[1];
            
         } else {
-            dd("Nenhum x-hash 1 solicitado encontrado.");
+            dd("Nenhum page_view_id 1 solicitado encontrado.");
           
         }
 
@@ -84,7 +85,7 @@ class PacotesDecolarController extends Controller
             $abvc = $matches[1];
            
         } else {
-            dd("Nenhum x-hash solicitado encontrado.");
+            dd("Nenhum abvc solicitado encontrado.");
           
         }
 
@@ -93,21 +94,68 @@ class PacotesDecolarController extends Controller
             $trip_item = $matches[1];
            
         } else {
-            dd("Nenhum search-id solicitado encontrado.");
+            dd("Nenhum trip_item solicitado encontrado.");
           
         }
 
-        $ratesPacotes = self::mountCurlTakeRates($url,$search_id,$x_hash,$page_view_id);
-    
-        foreach($ratesPacotes['availability'] as $accommodation){
-            array_push($data_hotels,[
-                "id" => $accommodation['accommodation']['id'],
-                "name" => $accommodation['accommodation']['name'],
-                "geo_id" => $accommodation['accommodation']['location']['city']['geo_id']
-            ]);
+        if (preg_match('/\?searchParams=(.*?)&/', $url , $matches)) {
+
+            $search_params = $matches[1];
+           
+        } else {
+            dd("Nenhum searchParams solicitado encontrado.");
+          
         }
+
+        if (preg_match('/&flow=(.*?)&/', $url , $matches)) {
+
+            $flow = $matches[1];
+           
+        } else {
+            dd("Nenhum flow solicitado encontrado.");
+          
+        }
+        //dump($page_view_id,$search_params,$trip_item,$search_id,$abvc,$x_hash,$flow);
+
+        //hotel escolhido pela decolar e informações do voo
+        //$result = json_decode(self::mountCurlFlightAccommodation($page_view_id,$trip_item,$search_params,$search_id,$abvc,$x_hash,$flow,$pc_id),true);
         
+        
+        //dump($url);
+        $ratesPacotes = self::mountCurlTakeRates($url,$search_id,$x_hash,$page_view_id);
+        //dd($ratesPacotes);
+
+        //dd($url,$ratesPacotes);
+
+        if(!is_array($ratesPacotes['availability'])){
+            return "Key prices não é um array.";
+        }
+        if(!isset($ratesPacotes['availability'])){
+            return "Key availability não retornada.";
+        }
+
+        $page=1;
+        do{
+            foreach($ratesPacotes['availability'] as $accommodation){
+
+                if($accommodation['accommodation']['kind'] === "HOTEL"){
+                    array_push($data_hotels,[
+                        "id" => $accommodation['accommodation']['id'],
+                        "name" => $accommodation['accommodation']['name'],
+                        "geo_id" => $accommodation['accommodation']['location']['city']['geo_id']
+                    ]);
+                }
+                
+            }
+            $pageAtual= $page;
+            $page++;
+            $url = str_replace("&page=$pageAtual&", "&page=$page&", $url);
+            $ratesPacotes = self::mountCurlTakeRates($url,$search_id,$x_hash,$page_view_id);
+        }while($ratesPacotes['availability']);
+        
+        dd($data_hotels);
         $result = self::mountCurlTakeUrlSecondStep($pc_id,$page_view_id,$x_hash, $search_id,$abvc,$trip_item,$search_params,$current_step_encoded_url);
+
 
         $url =  json_decode($result,true)['url'];
 
@@ -612,6 +660,53 @@ class PacotesDecolarController extends Controller
         $headers[] = 'Upa-Tracking: pageview';
         $headers[] = 'X-Client: s-accommodations';
         $headers[] = 'X-Hash: '.$x_hash;
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        $result = curl_exec($ch);
+        if (curl_errno($ch)) {
+            echo 'Error:' . curl_error($ch);
+        }
+        curl_close($ch);
+
+        return $result;
+    }
+
+    private function mountCurlFlightAccommodation($pageviewId,$tripItem,$searchParams,$searchId,$abcv,$x_hash,$flow,$pc_id){
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, "https://www.decolar.com/toure/wizard/carts/$pc_id?locale=pt-BR&pageviewId=$pageviewId&flow=$flow&step=hotels&tripItem=$tripItem&stepNum=0&searchParams=$searchParams&searchId=$searchId&abcv=$abcv&real_traffic=true&real_traffic_4=true");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+
+        curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
+
+        $headers = array();
+        $headers[] = 'Accept: application/json';
+        $headers[] = 'Accept-Language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7';
+        $headers[] = 'Cache-Control: no-cache';
+        $headers[] = 'Connection: keep-alive';
+        $headers[] = 'Content-Type: application/json';
+        $headers[] = 'Pragma: no-cache';
+        $headers[] = 'Referer: https://www.decolar.com';
+        $headers[] = 'Sec-Fetch-Dest: empty';
+        $headers[] = 'Sec-Fetch-Mode: cors';
+        $headers[] = 'Sec-Fetch-Site: same-origin';
+        $headers[] = 'Sec-Gpc: 1';
+        $headers[] = 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36';
+        $headers[] = 'X-Client: s-accommodations';
+        $headers[] = 'X-Service-Version: 2';
+        $headers[] = 'Cp-Step-Num: 0';
+        $headers[] = 'Flow: shopping';
+        $headers[] = "Page-View-Id: $pageviewId";
+        $headers[] = 'Page-View-Referrer: https://www.decolar.com';
+        $headers[] = 'Product: flight-hotel';
+        $headers[] = "Search-Id: $searchParams";
+        $headers[] = 'Sec-Ch-Ua: \"Brave\";v=\"119\", \"Chromium\";v=\"119\", \"Not?A_Brand\";v=\"24\"';
+        $headers[] = 'Sec-Ch-Ua-Mobile: ?0';
+        $headers[] = 'Sec-Ch-Ua-Model: \"\"';
+        $headers[] = 'Sec-Ch-Ua-Platform: \"Linux\"';
+        $headers[] = 'Step-Flow: results';
+        $headers[] = "X-Hash: $x_hash";
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
         $result = curl_exec($ch);
