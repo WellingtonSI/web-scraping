@@ -10,7 +10,6 @@ class PacotesDecolarController extends Controller
 {
     public function pacotesDecolar()
     {
-         
         $origin = 'CIT_6574';
         $destiny = 'CIT_4430';
         $date_start = '2023-12-14';
@@ -19,43 +18,32 @@ class PacotesDecolarController extends Controller
         
         $result = self::mountCurlTakeUrlFirstStep($origin, $destiny, $date_start,$date_end,$people);
 
-
+        $data_hotels = [];
         $url = json_decode($result,true)['url'];
         $pc_id = '';
         $current_step_encoded_url  = base64_encode("https://www.decolar.com/".$url);
     
         if (preg_match('/\/results\/(.*?)\?/', $url, $matches)) {
-            // O URL solicitado estará em $matches[1]
             $pc_id = $matches[1];
            
         } else {
-            dd("Nenhum URL solicitado encontrado.");
-          
+            return "Nenhum pc_id encontrado.";
         }
     
         $result = self::mountCurlTakeHtml($url);
 
-        
-        
         if (preg_match('/<script id="s-accommodations-state" type="application\/json">(.*?)<\/script>/', $result, $matches)) {
             $json = str_replace('&q;', '"', $matches[1]);
            
         } else {
-            dd("Nenhum json solicitado encontrado.");   
-
+            return "Nenhum json encontrado.";
         }
-
-        
-
-        dd(json_decode($json, true));
-
-        //dd($result);
 
         $crawler = new Crawler($result);
 
         $result = json_decode($json, true);
 
-        if(!isset($result['errorInfo'])){
+        if(isset($result['errorInfo'])){
             return "Key ['errorInfo'] não retornada.";
         }
 
@@ -87,7 +75,7 @@ class PacotesDecolarController extends Controller
             return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'] não retornada.";
         }
 
-        if(!empty($result['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'])){
+        if(empty($result['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'])){
             return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'] está vazio.";
         }
 
@@ -98,7 +86,7 @@ class PacotesDecolarController extends Controller
         if(!isset($result['packageSelectedAccommodationByCurrencyValues']['BRL']['prices'])){
             return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['prices'] não retornada.";
         }
-        if(!empty($result['packageSelectedAccommodationByCurrencyValues']['BRL']['prices'])){
+        if(empty($result['packageSelectedAccommodationByCurrencyValues']['BRL']['prices'])){
             return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['prices'] está vazio.";
         }
 
@@ -121,8 +109,10 @@ class PacotesDecolarController extends Controller
         }
 
 
+        if($result['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation']['kind'] === "HOTEL")
+            array_push($data_hotels,self::getRateHotel($result['packageSelectedAccommodationByCurrencyValues']['BRL']));
 
-        if(is_null($result[]))
+        //dd($data_hotels);
 
         $script = $crawler->filter('body > script')->text();
         $search_id = '';
@@ -132,31 +122,28 @@ class PacotesDecolarController extends Controller
         $trip_item ='';
         $search_params ='';
         $flow = '';
-        $data_hotels = [];
+       
         // função preg_match para encontrar a correspondência
         if (preg_match('/"search-id", "(.*?)"\);/', $script, $matches)) {
             // O URL solicitado estará em $matches[1]
             $search_id = $matches[1];
            
         } else {
-            dd("Nenhum search_id solicitado encontrado.");
-          
+            return "Nenhum search_id encontrado.";
         }
         if (preg_match('/requestUrl = "(.*?)";/', $script, $matches)) {
 
             $url = $matches[1];
            
         } else {
-            dd("Nenhum requestUrl solicitado encontrado.");
-          
+            return "Nenhum requestUrl encontrado.";
         }
         if (preg_match('/"x-hash", "(.*?)"\);/', $script, $matches)) {
 
             $x_hash = $matches[1];
            
         } else {
-            dd("Nenhum x-hash solicitado encontrado.");
-          
+            return "Nenhum x-hash encontrado.";
         }
 
         if (preg_match('/"page-view-id", "(.*?)"\);/', $script, $matches)) {
@@ -164,8 +151,7 @@ class PacotesDecolarController extends Controller
             $page_view_id = $matches[1];
            
         } else {
-            dd("Nenhum page_view_id 1 solicitado encontrado.");
-          
+            return "Nenhum page_view_id encontrado.";
         }
 
         if (preg_match('/abcv=(.*?)&/', $script, $matches)) {
@@ -173,36 +159,36 @@ class PacotesDecolarController extends Controller
             $abvc = $matches[1];
            
         } else {
-            dd("Nenhum abvc solicitado encontrado.");
-          
+            return "Nenhum abvc encontrado.";
         }
 
-        if (preg_match('/&trip_item=(.*?)&/', $url , $matches)) {
+        // if (preg_match('/&trip_item=(.*?)&/', $url , $matches)) {
 
-            $trip_item = $matches[1];
+        //     $trip_item = $matches[1];
            
-        } else {
-            dd("Nenhum trip_item solicitado encontrado.");
+        // } else {
+            
+        //     dd("Nenhum trip_item solicitado encontrado.");
           
-        }
+        // }
 
-        if (preg_match('/\?searchParams=(.*?)&/', $url , $matches)) {
+        // if (preg_match('/\?searchParams=(.*?)&/', $url , $matches)) {
 
-            $search_params = $matches[1];
+        //     $search_params = $matches[1];
            
-        } else {
-            dd("Nenhum searchParams solicitado encontrado.");
+        // } else {
+        //     dd("Nenhum searchParams solicitado encontrado.");
           
-        }
+        // }
 
-        if (preg_match('/&flow=(.*?)&/', $url , $matches)) {
+        // if (preg_match('/&flow=(.*?)&/', $url , $matches)) {
 
-            $flow = $matches[1];
+        //     $flow = $matches[1];
            
-        } else {
-            dd("Nenhum flow solicitado encontrado.");
+        // } else {
+        //     dd("Nenhum flow solicitado encontrado.");
           
-        }
+        // }
         //dump($page_view_id,$search_params,$trip_item,$search_id,$abvc,$x_hash,$flow);
 
         //hotel escolhido pela decolar e informações do voo
@@ -260,7 +246,7 @@ class PacotesDecolarController extends Controller
         //dump($url);
 
 
-        //etapa para pegar nomes e id dos hotéis de sugestão dos hotéis da cidade de destino
+        //etapa para pegar nomes,id e valores dos hotéis de sugestão dos hotéis da cidade de destino
         $ratesPacotes = self::mountCurlTakeRates($url,$search_id,$x_hash,$page_view_id);
         //dd($ratesPacotes);
 
@@ -274,177 +260,174 @@ class PacotesDecolarController extends Controller
 
         $page=1;
         do{
-            foreach($ratesPacotes['availability'] as $accommodation){
+            foreach($ratesPacotes['availability'] as $hotel){
 
-                if(!isset($accommodation['accommodation'])){
+                if(!isset($hotel['accommodation'])){
                     return "Key [availability][accommodation] não retornada.";
                 }
 
-                if(!isset($accommodation['prices'])){
+                if(!isset($hotel['prices'])){
                     return "Key [availability][prices] não retornada.";
                 }
         
-                if(!isset($accommodation['accommodation']['kind'])){
+                if(!isset($hotel['accommodation']['kind'])){
                     return "Key [availability][kind] não retornada.";
                 }
 
-                if(!isset($accommodation['accommodation']['name'])){
+                if(!isset($hotel['accommodation']['name'])){
                     return "Key [availability][name] não retornada.";
                 }
                 
 
-                if($accommodation['accommodation']['kind'] === "HOTEL"){
-
-                    $hasDiscount=false;
-                    $amount=null;
-                    $tax_amount=null;
-                    $amount_with_discount=null;
-                    $discount_percentage=null;
-                    $discount = null;
-                    $flight_value=null;
-                    $accommodation_value=null;
+                if($hotel['accommodation']['kind'] === "HOTEL"){
+                    array_push($data_hotels,self::getRateHotel($hotel));
+                    // $hasDiscount=false;
+                    // $amount=null;
+                    // $tax_amount=null;
+                    // $amount_with_discount=null;
+                    // $discount_percentage=null;
+                    // $discount = null;
+                    // $flight_value=null;
+                    // $accommodation_value=null;
     
-                    //valores do hotel
-                    if(!isset($accommodation['prices'])){
-                        return "Key prices não retornada.";
-                    }
-                    if(!is_array($accommodation['prices'])){
-                        return "Key prices não é um array.";
-                    }
-                    if(!isset($accommodation['prices']['typed_breakdown'])){
-                        return "Key typed_breakdown não retornada.";
-                    }
-                    if(!isset($accommodation['prices']['typed_breakdown']['model'])){
-                        return "Key prices[typed_breakdown]['model'] não retornada.";
-                    }
-                    if(!isset($accommodation['prices']['typed_breakdown']['model']['header'])){
-                        return "Key prices[typed_breakdown]['model']['header'] não retornada.";
-                    }
-                    if(!isset($accommodation['prices']['typed_breakdown']['model']['body'])){
-                        return "Key prices[typed_breakdown]['model']['body'] não retornada.";
-                    }
-                    if(!isset($accommodation['prices']['typed_breakdown']['model']['footer'])){
-                        return "Key prices[typed_breakdown]['model']['footer'] não retornada.";
-                    }
+                    // //valores do hotel
+                    // if(!isset($accommodation['prices'])){
+                    //     return "Key prices não retornada.";
+                    // }
+                    // if(!is_array($accommodation['prices'])){
+                    //     return "Key prices não é um array.";
+                    // }
+                    // if(!isset($accommodation['prices']['typed_breakdown'])){
+                    //     return "Key typed_breakdown não retornada.";
+                    // }
+                    // if(!isset($accommodation['prices']['typed_breakdown']['model'])){
+                    //     return "Key prices[typed_breakdown]['model'] não retornada.";
+                    // }
+                    // if(!isset($accommodation['prices']['typed_breakdown']['model']['header'])){
+                    //     return "Key prices[typed_breakdown]['model']['header'] não retornada.";
+                    // }
+                    // if(!isset($accommodation['prices']['typed_breakdown']['model']['body'])){
+                    //     return "Key prices[typed_breakdown]['model']['body'] não retornada.";
+                    // }
+                    // if(!isset($accommodation['prices']['typed_breakdown']['model']['footer'])){
+                    //     return "Key prices[typed_breakdown]['model']['footer'] não retornada.";
+                    // }
 
-                    // --------------------------- flight --------------------------------------------- //
+                    // // --------------------------- flight --------------------------------------------- //
 
-                    $position = array_search('FLIGHT', array_column($accommodation['prices']['typed_breakdown']['model']['header'], 'type'));
+                    // $position = array_search('FLIGHT', array_column($accommodation['prices']['typed_breakdown']['model']['header'], 'type'));
 
 
-                    if($position  === false){
-                        return "Key prices[typed_breakdown]['model']['header']['type'] == FLIGHT não retornada.";
-                    }
+                    // if($position  === false){
+                    //     return "Key prices[typed_breakdown]['model']['header']['type'] == FLIGHT não retornada.";
+                    // }
 
-                    $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['header'][$position]['prices'], 'currency'));
+                    // $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['header'][$position]['prices'], 'currency'));
                     
-                    if($position_prices === false){
-                        return "Key prices[typed_breakdown]['model']['header']['prices']['currency'] == BRL não retornada.";
-                    }
-                    //dd($position_prices,$position);
-                    $flight_value = $accommodation['prices']['typed_breakdown']['model']['header'][$position]['prices'][$position_prices]['value'];
-                    //dd($ratesPacotes['availability'][0]);
-                    //dd($accommodation['prices']['typed_breakdown']['model']['header'],$position,$position_prices);
-                    // --------------------------- accommodation --------------------------------------------- //
+                    // if($position_prices === false){
+                    //     return "Key prices[typed_breakdown]['model']['header']['prices']['currency'] == BRL não retornada.";
+                    // }
+  
+                    // $flight_value = $accommodation['prices']['typed_breakdown']['model']['header'][$position]['prices'][$position_prices]['value'];
+ 
+                    // // --------------------------- accommodation --------------------------------------------- //
 
-                    $position = array_search('HOTEL', array_column($accommodation['prices']['typed_breakdown']['model']['header'], 'type'));
-
-
-                    if($position  === false){
-                        return "Key prices[typed_breakdown]['model']['header']['type'] == HOTEL não retornada.";
-                    }
-
-                    $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['header'][$position]['prices'], 'currency'));
-    
-                    if($position_prices === false){
-                        return "Key prices[typed_breakdown]['model']['header']['prices']['currency'] == BRL não retornada.";
-                    }
-
-                    $accommodation_value = $accommodation['prices']['typed_breakdown']['model']['header'][$position]['prices'][$position_prices]['value'];
-
-                    // --------------------------- taxes --------------------------------------------- //
-
-                    $position = array_search('TAXES', array_column($accommodation['prices']['typed_breakdown']['model']['body'], 'type'));
-    
-                    if($position  === false){
-                        return "Key prices[typed_breakdown]['model']['body']['type'] == TAXES não retornada.";
-                    }
-    
-                    $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['body'][$position]['prices'], 'currency'));
-    
-                    if($position_prices === false){
-                        return "Key prices[typed_breakdown]['model']['body']['prices']['currency'] == BRL não retornada.";
-                    }
-    
-                    $tax_amount = $accommodation['prices']['typed_breakdown']['model']['body'][$position]['prices'][$position_prices]['value'];
+                    // $position = array_search('HOTEL', array_column($accommodation['prices']['typed_breakdown']['model']['header'], 'type'));
 
 
-                    // --------------------------- discount --------------------------------------------- //
-                    $position = array_search('DISCOUNT', array_column($accommodation['prices']['typed_breakdown']['model']['body'], 'type'));
+                    // if($position  === false){
+                    //     return "Key prices[typed_breakdown]['model']['header']['type'] == HOTEL não retornada.";
+                    // }
+
+                    // $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['header'][$position]['prices'], 'currency'));
     
-                    if($position){
-                        $hasDiscount=true;
+                    // if($position_prices === false){
+                    //     return "Key prices[typed_breakdown]['model']['header']['prices']['currency'] == BRL não retornada.";
+                    // }
+
+                    // $accommodation_value = $accommodation['prices']['typed_breakdown']['model']['header'][$position]['prices'][$position_prices]['value'];
+
+                    // // --------------------------- taxes --------------------------------------------- //
+
+                    // $position = array_search('TAXES', array_column($accommodation['prices']['typed_breakdown']['model']['body'], 'type'));
     
-                        $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['body'][$position]['prices'], 'currency'));
+                    // if($position  === false){
+                    //     return "Key prices[typed_breakdown]['model']['body']['type'] == TAXES não retornada.";
+                    // }
     
-                        $discount =  $accommodation['prices']['typed_breakdown']['model']['body'][$position]['prices'][$position_prices]['value'];
+                    // $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['body'][$position]['prices'], 'currency'));
     
-                        // --------------------------- final price --------------------------------------------- //
-                        $position = array_search('FINAL_PRICE', array_column($accommodation['prices']['typed_breakdown']['model']['footer'], 'type'));
+                    // if($position_prices === false){
+                    //     return "Key prices[typed_breakdown]['model']['body']['prices']['currency'] == BRL não retornada.";
+                    // }
     
-    
-                        if($position_prices === false){
-                            return "Key prices[typed_breakdown]['model']['footer']['prices']['currency'] == BRL não retornada.";
-                        }
-    
-                        $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['footer'][$position]['prices'], 'currency'));
-    
-                        $amount_with_discount = $accommodation['prices']['typed_breakdown']['model']['footer'][$position]['prices'][$position_prices]['value'];
-    
-                        $amount = $amount_with_discount + $discount;
-    
-                        $discount_percentage = (float) number_format( ($discount/$amount)*100 , 2);
-    
-                    }else{
-                         // --------------------------- final price --------------------------------------------- //
-                        $position = array_search('FINAL_PRICE', array_column($accommodation['prices']['typed_breakdown']['model']['footer'], 'type'));
-    
-                        if($position_prices === false){
-                            return "Key prices[typed_breakdown]['model']['footer']['prices']['currency'] == BRL não retornada.";
-                        }
-    
-                        $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['footer'][$position]['prices'], 'currency'));
-    
-                        $amount = $accommodation['prices']['typed_breakdown']['model']['footer'][$position]['prices'][$position_prices]['value'];
-    
-                    }
-    
-                    // array_push($data_room,[
-                    //     'flight_value' => $flight_value,
-                    //     'accommodation_value' => $accommodation_value,
-                    //     'hasDiscount' => $hasDiscount,
-                    //     'amount' => $amount,
-                    //     'tax_amount' => $tax_amount,
-                    //     'amount_with_discount' => $amount_with_discount,
-                    //     'discount_percentage' =>$discount_percentage,
-                    // ]);
+                    // $tax_amount = $accommodation['prices']['typed_breakdown']['model']['body'][$position]['prices'][$position_prices]['value'];
 
 
+                    // // --------------------------- discount --------------------------------------------- //
+                    // $position = array_search('DISCOUNT', array_column($accommodation['prices']['typed_breakdown']['model']['body'], 'type'));
+    
+                    // if($position){
+                    //     $hasDiscount=true;
+    
+                    //     $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['body'][$position]['prices'], 'currency'));
+    
+                    //     $discount =  $accommodation['prices']['typed_breakdown']['model']['body'][$position]['prices'][$position_prices]['value'];
+    
+                    //     // --------------------------- final price --------------------------------------------- //
+                    //     $position = array_search('FINAL_PRICE', array_column($accommodation['prices']['typed_breakdown']['model']['footer'], 'type'));
+    
+    
+                    //     if($position_prices === false){
+                    //         return "Key prices[typed_breakdown]['model']['footer']['prices']['currency'] == BRL não retornada.";
+                    //     }
+    
+                    //     $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['footer'][$position]['prices'], 'currency'));
+    
+                    //     $amount_with_discount = $accommodation['prices']['typed_breakdown']['model']['footer'][$position]['prices'][$position_prices]['value'];
+    
+                    //     $amount = $amount_with_discount + $discount;
+    
+                    //     $discount_percentage = (float) number_format( ($discount/$amount)*100 , 2);
+    
+                    // }else{
+                    //      // --------------------------- final price --------------------------------------------- //
+                    //     $position = array_search('FINAL_PRICE', array_column($accommodation['prices']['typed_breakdown']['model']['footer'], 'type'));
+    
+                    //     if($position_prices === false){
+                    //         return "Key prices[typed_breakdown]['model']['footer']['prices']['currency'] == BRL não retornada.";
+                    //     }
+    
+                    //     $position_prices = array_search('BRL', array_column($accommodation['prices']['typed_breakdown']['model']['footer'][$position]['prices'], 'currency'));
+    
+                    //     $amount = $accommodation['prices']['typed_breakdown']['model']['footer'][$position]['prices'][$position_prices]['value'];
+    
+                    // }
+    
+                    // // array_push($data_room,[
+                    // //     'flight_value' => $flight_value,
+                    // //     'accommodation_value' => $accommodation_value,
+                    // //     'hasDiscount' => $hasDiscount,
+                    // //     'amount' => $amount,
+                    // //     'tax_amount' => $tax_amount,
+                    // //     'amount_with_discount' => $amount_with_discount,
+                    // //     'discount_percentage' =>$discount_percentage,
+                    // // ]);
 
-                    array_push($data_hotels,[
-                        "id" => $accommodation['accommodation']['id'],
-                        "name" => $accommodation['accommodation']['name'],
-                        "infos_value" => [
-                            'flight_value' => $flight_value,
-                            'accommodation_value' => $accommodation_value,
-                            'hasDiscount' => $hasDiscount,
-                            'amount' => $amount,
-                            'tax_amount' => $tax_amount,
-                            'amount_with_discount' => $amount_with_discount,
-                            'discount_percentage' =>$discount_percentage,
-                        ]
+                    // array_push($data_hotels,[
+                    //     "id" => $accommodation['accommodation']['id'],
+                    //     "name" => $accommodation['accommodation']['name'],
+                    //     "infos_value" => [
+                    //         'flight_value' => $flight_value,
+                    //         'accommodation_value' => $accommodation_value,
+                    //         'hasDiscount' => $hasDiscount,
+                    //         'amount' => $amount,
+                    //         'tax_amount' => $tax_amount,
+                    //         'amount_with_discount' => $amount_with_discount,
+                    //         'discount_percentage' =>$discount_percentage,
+                    //     ]
                         
-                    ]);
+                    // ]);
                 }
                 
             }
@@ -731,6 +714,144 @@ class PacotesDecolarController extends Controller
             
         // }
         // return $name_id;
+    }
+
+    private function getRateHotel($hotel){
+
+        $hasDiscount=false;
+        $amount=null;
+        $tax_amount=null;
+        $amount_with_discount=null;
+        $discount_percentage=null;
+        $discount = null;
+        $flight_value=null;
+        $accommodation_value=null;
+
+        //valores do hotel
+        if(!isset($hotel['prices'])){
+            return "Key prices não retornada.";
+        }
+        if(!is_array($hotel['prices'])){
+            return "Key prices não é um array.";
+        }
+        if(!isset($hotel['prices']['typed_breakdown'])){
+            return "Key typed_breakdown não retornada.";
+        }
+        if(!isset($hotel['prices']['typed_breakdown']['model'])){
+            return "Key prices[typed_breakdown]['model'] não retornada.";
+        }
+        if(!isset($hotel['prices']['typed_breakdown']['model']['header'])){
+            return "Key prices[typed_breakdown]['model']['header'] não retornada.";
+        }
+        if(!isset($hotel['prices']['typed_breakdown']['model']['body'])){
+            return "Key prices[typed_breakdown]['model']['body'] não retornada.";
+        }
+        if(!isset($hotel['prices']['typed_breakdown']['model']['footer'])){
+            return "Key prices[typed_breakdown]['model']['footer'] não retornada.";
+        }
+
+        // --------------------------- flight --------------------------------------------- //
+
+        $position = array_search('FLIGHT', array_column($hotel['prices']['typed_breakdown']['model']['header'], 'type'));
+
+
+        if($position  === false){
+            return "Key prices[typed_breakdown]['model']['header']['type'] == FLIGHT não retornada.";
+        }
+
+        $position_prices = array_search('BRL', array_column($hotel['prices']['typed_breakdown']['model']['header'][$position]['prices'], 'currency'));
+        
+        if($position_prices === false){
+            return "Key prices[typed_breakdown]['model']['header']['prices']['currency'] == BRL não retornada.";
+        }
+
+        $flight_value = (float) $hotel['prices']['typed_breakdown']['model']['header'][$position]['prices'][$position_prices]['value'];
+
+        // --------------------------- accommodation --------------------------------------------- //
+
+        $position = array_search('HOTEL', array_column($hotel['prices']['typed_breakdown']['model']['header'], 'type'));
+
+
+        if($position  === false){
+            return "Key prices[typed_breakdown]['model']['header']['type'] == HOTEL não retornada.";
+        }
+
+        $position_prices = array_search('BRL', array_column($hotel['prices']['typed_breakdown']['model']['header'][$position]['prices'], 'currency'));
+
+        if($position_prices === false){
+            return "Key prices[typed_breakdown]['model']['header']['prices']['currency'] == BRL não retornada.";
+        }
+
+        $accommodation_value = (float) $hotel['prices']['typed_breakdown']['model']['header'][$position]['prices'][$position_prices]['value'];
+
+        // --------------------------- taxes --------------------------------------------- //
+
+        $position = array_search('TAXES', array_column($hotel['prices']['typed_breakdown']['model']['body'], 'type'));
+
+        if($position  === false){
+            return "Key prices[typed_breakdown]['model']['body']['type'] == TAXES não retornada.";
+        }
+
+        $position_prices =  array_search('BRL', array_column($hotel['prices']['typed_breakdown']['model']['body'][$position]['prices'], 'currency'));
+
+        if($position_prices === false){
+            return "Key prices[typed_breakdown]['model']['body']['prices']['currency'] == BRL não retornada.";
+        }
+
+        $tax_amount = (float) $hotel['prices']['typed_breakdown']['model']['body'][$position]['prices'][$position_prices]['value'];
+
+
+        // --------------------------- discount --------------------------------------------- //
+        $position = array_search('DISCOUNT', array_column($hotel['prices']['typed_breakdown']['model']['body'], 'type'));
+
+        if($position){
+            $hasDiscount=true;
+
+            $position_prices = array_search('BRL', array_column($hotel['prices']['typed_breakdown']['model']['body'][$position]['prices'], 'currency'));
+
+            $discount = $hotel['prices']['typed_breakdown']['model']['body'][$position]['prices'][$position_prices]['value'];
+
+            // --------------------------- final price --------------------------------------------- //
+            $position = array_search('FINAL_PRICE', array_column($hotel['prices']['typed_breakdown']['model']['footer'], 'type'));
+
+
+            if($position_prices === false){
+                return "Key prices[typed_breakdown]['model']['footer']['prices']['currency'] == BRL não retornada.";
+            }
+
+            $position_prices = array_search('BRL', array_column($hotel['prices']['typed_breakdown']['model']['footer'][$position]['prices'], 'currency'));
+
+            $amount_with_discount = (float) $hotel['prices']['typed_breakdown']['model']['footer'][$position]['prices'][$position_prices]['value'];
+
+            $amount = (float) $amount_with_discount + $discount;
+
+            $discount_percentage = (float) number_format( ($discount/$amount)*100 , 2);
+
+        }else{
+                // --------------------------- final price --------------------------------------------- //
+            $position = array_search('FINAL_PRICE', array_column($hotel['prices']['typed_breakdown']['model']['footer'], 'type'));
+
+            if($position_prices === false){
+                return "Key prices[typed_breakdown]['model']['footer']['prices']['currency'] == BRL não retornada.";
+            }
+
+            $position_prices = array_search('BRL', array_column($hotel['prices']['typed_breakdown']['model']['footer'][$position]['prices'], 'currency'));
+
+            $amount = (float) $hotel['prices']['typed_breakdown']['model']['footer'][$position]['prices'][$position_prices]['value'];
+
+        }
+
+        return [
+            'name_hotel' => $hotel['accommodation']['name'],
+            'flight_value' => $flight_value,
+            'accommodation_value' => $accommodation_value,
+            'hasDiscount' => $hasDiscount,
+            'amount' => $amount,
+            'tax_amount' => $tax_amount,
+            'amount_with_discount' => $amount_with_discount,
+            'discount_percentage' =>$discount_percentage
+        ];
+        
     }
 
     private function mountCurlTakeUrlFirstStep($id_origin, $id_destiny, $start, $end, $people){
