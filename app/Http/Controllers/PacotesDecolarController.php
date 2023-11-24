@@ -14,9 +14,9 @@ class PacotesDecolarController extends Controller
         $destiny = 'CIT_4430';
         $date_start = '2023-12-14';
         $date_end = '2023-12-16';
-        $people = 2;
-        
-        $result = self::mountCurlTakeUrlFirstStep($origin, $destiny, $date_start,$date_end,$people);
+        $adults = 2;
+        $childrens = 0;
+        $result = self::mountCurlTakeUrlFirstStep($origin, $destiny, $date_start,$date_end,$adults,$childrens);
 
         $data_hotels = [];
         $url = json_decode($result,true)['url'];
@@ -67,20 +67,18 @@ class PacotesDecolarController extends Controller
             return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'] não retornada.";
         }
 
-        if(!isset($result['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'])){
-            return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'] não retornada.";
-        }
-
-        if(!isset($result['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'])){
-            return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'] não retornada.";
-        }
-
         if(empty($result['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'])){
             return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation'] está vazio.";
         }
-
         if(!isset($result['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation']['name'])){
             return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation']['name'] não retornada.";
+        }
+        if(!isset($result['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation']['location'])){
+            return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation']['location'] não retornada.";
+        }
+
+        if(!isset($result['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation']['location']['city_id'])){
+            return "Key ['packageSelectedAccommodationByCurrencyValues']['BRL']['accommodation']['location']['city_id'] não retornada.";
         }
 
         if(!isset($result['packageSelectedAccommodationByCurrencyValues']['BRL']['prices'])){
@@ -125,9 +123,8 @@ class PacotesDecolarController extends Controller
        
         // função preg_match para encontrar a correspondência
         if (preg_match('/"search-id", "(.*?)"\);/', $script, $matches)) {
-            // O URL solicitado estará em $matches[1]
             $search_id = $matches[1];
-           
+        
         } else {
             return "Nenhum search_id encontrado.";
         }
@@ -842,6 +839,8 @@ class PacotesDecolarController extends Controller
         }
 
         return [
+            'hotel_id' => $hotel['accommodation']['id'],
+            'city_id' => $hotel['accommodation']['location']['city_id'],
             'name_hotel' => $hotel['accommodation']['name'],
             'flight_value' => $flight_value,
             'accommodation_value' => $accommodation_value,
@@ -854,10 +853,11 @@ class PacotesDecolarController extends Controller
         
     }
 
-    private function mountCurlTakeUrlFirstStep($id_origin, $id_destiny, $start, $end, $people){
+    private function mountCurlTakeUrlFirstStep($id_origin, $id_destiny, $start, $end, $adults,$childrens){
+        $text_childrens = $childrens === 0 ? '' : "-$childrens:10";
         $ch = curl_init();
 
-        curl_setopt($ch, CURLOPT_URL, 'https://www.decolar.com/pkg-loader/api/FH/'.$id_origin.'/'.$id_destiny.'/'.$start.'/'.$end.'/'.$id_destiny.'/'.$start.'/'.$end.'/'.$people.'?locale=pt-BR&from=PSB&nw=true');
+        curl_setopt($ch, CURLOPT_URL, 'https://www.decolar.com/pkg-loader/api/FH/'.$id_origin.'/'.$id_destiny.'/'.$start.'/'.$end.'/'.$id_destiny.'/'.$start.'/'.$end.'/'.$adults.$text_childrens.'?locale=pt-BR&from=PSB&nw=true');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
 
@@ -869,7 +869,7 @@ class PacotesDecolarController extends Controller
         $headers[] = 'Cache-Control: no-cache';
         $headers[] = 'Connection: keep-alive';
         $headers[] = 'Pragma: no-cache';
-        $headers[] = 'Referer: https://www.decolar.com/trip/start/FH/'.$id_origin.'/'.$id_destiny.'/'.$start.'/'.$end.'/'.$id_destiny.'/'.$start.'/'.$end.'/'.$people.'?from=PSB&nw=true';
+        $headers[] = 'Referer: https://www.decolar.com/trip/start/FH/'.$id_origin.'/'.$id_destiny.'/'.$start.'/'.$end.'/'.$id_destiny.'/'.$start.'/'.$end.'/'.$adults.$text_childrens.'?from=PSB&nw=true';
         $headers[] = 'Sec-Fetch-Dest: empty';
         $headers[] = 'Sec-Fetch-Mode: cors';
         $headers[] = 'Sec-Fetch-Site: same-origin';
